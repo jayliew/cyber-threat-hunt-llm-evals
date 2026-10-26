@@ -2,7 +2,7 @@
 
 # Cyber Threat Hunt LLM Evals
 
-[![Runs Locally](https://img.shields.io/badge/Runs-Locally-238636?style=flat-square)](#quick-start) [![Ollama](https://img.shields.io/badge/Inference-Ollama-333333?style=flat-square)](https://ollama.com) [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-2ea44f?style=flat-square&logo=github&logoColor=white)](#contribute-a-model-run) [![View Eval Results](https://img.shields.io/badge/View-Eval_Results-0969da?style=flat-square)](https://github.com/jayliew/cyber-threat-hunt-llm-evals/tree/dev/results)
+[![Runs Locally](https://img.shields.io/badge/Runs-Locally-238636?style=flat-square)](#quick-start) [![Ollama](https://img.shields.io/badge/Inference-Ollama-333333?style=flat-square)](https://ollama.com) [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-2ea44f?style=flat-square&logo=github&logoColor=white)](#contribute-a-model-run) [![View Eval Results](https://img.shields.io/badge/View-Eval_Results-0969da?style=flat-square)](https://github.com/jayliew/cyber-threat-hunt-llm-evals/tree/main/results)
 
 **Can an open-weight LLM tell a real cyber threat from activity that only *looks* malicious?**
 
@@ -11,6 +11,8 @@ This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Gi
 - **7 focused scenarios:** actual attack patterns, benign lookalikes, and a case where the right answer is *we don't know*.
 - **Your models, your hardware:** run locally through [Ollama](https://ollama.com) or optionally [Colibri](https://github.com/JustVugg/colibri). The Ollama quick start needs no cloud API key or SIEM.
 - **Inspectable results:** structured findings, `event.id` citations, validation checks, and an HTML comparison report.
+
+**Results snapshot:** The [October 3 evaluation](#results-so-far) covers **15 model configurations × 7 synthetic scenarios = 105 investigations**. In the published LLM-assisted grading, **32/105 runs passed** and **none passed the ambiguous c07 case**. These are exploratory, configuration-specific results—not a definitive model ranking.
 
 **We need your GPU time.** Most people can't run every 70B+ model, MoE, or less-quantized checkpoint. If you can test a model or configuration that isn't represented in the [published results](#results-so-far), your contribution helps everyone understand what's actually possible. [Jump to contributing](#contribute-a-model-run).
 
@@ -57,7 +59,7 @@ ollama pull mistral-nemo:12b
 uv run python compare_models.py --models mistral-nemo:12b --logs logs/http-beaconing.jsonl
 ```
 
-That's it. Open `report.html` in the timestamped `results/` directory. You'll see the model's verdict, explanation, cited events, validity checks, and timing. To see what a report looks like before running anything, [view an example](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/dev/results/12-Oct-2026-Mon_10-07pm-ET/report.html).
+That's it. Open `report.html` in the timestamped `results/` directory. You'll see the model's verdict, explanation, cited events, validity checks, and timing. To see what a report looks like before running anything, [view an example](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/report.html).
 
 **Run all seven scenarios against your model:**
 
@@ -104,6 +106,7 @@ flowchart LR
 ```
 
 The runner validates output structure and known event IDs; analytical correctness is reviewed separately using the [answer keys](evals/answer-keys.md).
+
 ## Limitations and fair comparisons
 
 **This is a small, inspectable research baseline—not a production detection benchmark or a definitive model leaderboard.** Contributions that address its limitations are especially welcome.
@@ -154,8 +157,8 @@ The reports below demonstrate the benchmark and its failure modes. Their rubric-
 
 2 configurations × 7 cases: `muse-glimmer:30b-mlx` and `gemma4:26b`.
 
-- [Threat hunt grading](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/dev/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html): grading (by GPT 6.1 Sol on high thinking) of the 14 evaluations—per-case scores for interpretation, evidence, restraint, and output validity.
-- [Model comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/dev/results/12-Oct-2026-Mon_10-07pm-ET/report.html): harness-generated `report.html` for that run—summary table of verdicts, output status, timings, context/token use, plus full answers and prompts.
+- [Threat hunt grading](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html): grading (by GPT 6.1 Sol on high thinking) of the 14 evaluations—per-case scores for interpretation, evidence, restraint, and output validity.
+- [Model comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/report.html): harness-generated `report.html` for that run—summary table of verdicts, output status, timings, context/token use, plus full answers and prompts.
 
 ### 3 October 2026
 
@@ -479,6 +482,10 @@ Run the test suite with:
 ```bash
 uv run python -m unittest -v
 ```
+
+## License
+
+Released under the [MIT License](LICENSE). Contributions are welcome; see the [contribution guide above](#contribute-a-model-run).
 
 ## Contact
 
