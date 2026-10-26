@@ -1,5 +1,7 @@
 # Cyber Threat Hunt LLM Evals
 
+[![Runs Locally](https://img.shields.io/badge/Runs-Locally-238636?style=flat-square)](#quick-start) [![Ollama](https://img.shields.io/badge/Inference-Ollama-333333?style=flat-square)](https://ollama.com) [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-2ea44f?style=flat-square&logo=github&logoColor=white)](#contribute-a-model-run) [![View Eval Results](https://img.shields.io/badge/View-Eval_Results-0969da?style=flat-square)](https://github.com/jayliew/cyber-threat-hunt-llm-evals/tree/dev/results)
+
 **Can an open-weight LLM tell a real cyber threat from activity that only *looks* malicious?**
 
 This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Give a model the same host and network logs, ask it to investigate, and compare whether it reaches a defensible verdict **with evidence**—not just a convincing-sounding explanation.
