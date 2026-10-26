@@ -1,5 +1,7 @@
 # Cyber Threat Hunt LLM Evals
 
+[![Runs Locally](https://img.shields.io/badge/Runs-Locally-238636?style=flat-square)](#quick-start) [![Ollama](https://img.shields.io/badge/Inference-Ollama-333333?style=flat-square)](https://ollama.com) [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-2ea44f?style=flat-square&logo=github&logoColor=white)](#contribute-a-model-run) [![View Eval Results](https://img.shields.io/badge/View-Eval_Results-0969da?style=flat-square)](https://github.com/jayliew/cyber-threat-hunt-llm-evals/tree/dev/results)
+
 **Can an open-weight LLM tell a real cyber threat from activity that only *looks* malicious?**
 
 This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Give a model the same host and network logs, ask it to investigate, and compare whether it reaches a defensible verdict **with evidence**—not just a convincing-sounding explanation.
@@ -11,6 +13,23 @@ This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Gi
 **We need your GPU time.** Most people can't run every 70B+ model, MoE, or less-quantized checkpoint. If you can test a model or configuration that isn't represented in the [published results](#results-so-far), your contribution helps everyone understand what's actually possible. [Jump to contributing](#contribute-a-model-run).
 
 > **Scope:** This repo evaluates model outputs on supplied synthetic logs. It is **not** an autonomous threat-hunting agent, a SIEM, or a production detection system.
+
+## One real failure: valid citations, wrong conclusion
+
+**A model can cite real events and still misread the evidence.** In the October 12 run, `gemma4:26b` examined [case 07](logs/opaque-sync-transfers.jsonl): two upload-heavy TLS connections occurred while endpoint process attribution was unavailable. A sync client was installed, but the logs could not establish which process initiated the traffic or why.
+
+| | Verdict | What the evidence supports |
+| --- | --- | --- |
+| **Answer key** | `inconclusive` | Suspicious *and* benign explanations remain possible. |
+| **Gemma 4** | `suspicious` / "Data Exfiltration" | Suggested defense evasion and misread another flow as an outbound transfer. |
+
+![Case 07 grading: Muse Glimmer and Gemma 4 both returned valid-format suspicious verdicts, but failed interpretation, evidence, and restraint checks.](docs/images/case-07-analytical-failures.png)
+
+*The [full case 07 grading report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html) includes each model’s response and cited event IDs.*
+
+The concrete mistake: Gemma cited `c07-e021` as part of the outbound-transfer pattern. That event shows **5,400 bytes sent and 1,200,000 bytes received**—a **download-heavy** connection, not another large upload. Its output passed structural validation and cited existing IDs, yet failed interpretation, evidence, and restraint in the separate grading review.
+
+A well-justified `suspicious` conclusion is not automatically wrong: the rubric permits one if the reasoning supports it. The problem here is the unsupported causal story and misinterpretation of an actual log entry. [See the grading report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html), [raw comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/report.html), and [answer key](evals/answer-keys.md).
 
 ## Quick start
 
@@ -69,7 +88,31 @@ Each scenario starts a fresh conversation and requests four fields:
 - **Summary**
 - **Evidence:** citations to `event.id`
 
-The runner validates output structure, citation IDs, completion status, and context use. **It does not automatically grade whether a verdict is correct.** Use the separate [answer keys and rubric](evals/answer-keys.md) to review *interpretation, evidence, and restraint*. The seven scenarios are synthetic ECS-style excerpts, not real incident captures; each model/scenario pair currently runs once. Treat comparisons as exploratory evidence, **not statistically robust model rankings**.
+The runner validates output structure, citation IDs, completion status, and context use. **Valid citations do not prove valid reasoning.** Use the separate [answer keys and rubric](evals/answer-keys.md) to review *interpretation, evidence, and restraint*. See [limitations](#limitations-and-fair-comparisons) before comparing models.
+
+### Architecture at a glance
+
+```mermaid
+flowchart LR
+    A["Host + network logs<br/>ECS JSONL"] --> B["Fresh model request<br/>Ollama or Colibri"]
+    B --> C["Verdict + threat type<br/>summary + event ID citations"]
+    C --> D["Validate format<br/>and cited event IDs"]
+    D --> E["HTML report<br/>+ results.jsonl"]
+    E -.-> F["Separate rubric review<br/>answer keys never shown to model"]
+```
+
+The runner validates output structure and known event IDs; analytical correctness is reviewed separately using the [answer keys](evals/answer-keys.md).
+## Limitations and fair comparisons
+
+**This is a small, inspectable research baseline—not a production detection benchmark or a definitive model leaderboard.** Contributions that address its limitations are especially welcome.
+
+- **Seven public, synthetic scenarios:** these are hand-selected ECS-style host/network excerpts, not representative enterprise telemetry or unseen incidents. Public answer keys also make this unsuitable as a contamination-resistant test set.
+- **One sample per model/case:** the current results do not estimate run-to-run variance, confidence intervals, or error rates. Changing seeds, quantization, context, or inference settings may change outcomes.
+- **Correctness is not scored by the harness:** it checks structure and known citation IDs, not whether a cited record actually proves the claim. Published rubric-based grades were produced with an LLM and need independent human review.
+- **Model configurations aren't fully standardized:** checkpoints differ in quantization, thinking mode, context settings, and sometimes model-specific prompt framing. Comparisons describe *these configurations*, not intrinsic model capability in isolation.
+- **No agentic investigation yet:** the model receives selected evidence in one conversation; it cannot query a SIEM, follow leads, request missing logs, or validate hypotheses with tools.
+
+For comparable submissions, keep the original seven inputs and task contract unchanged, publish exact model and inference settings, and share the raw outputs—even failures. New scenarios and improved grading methods should be proposed separately so historical comparisons remain interpretable.
 
 ## Contribute a model run
 
@@ -434,3 +477,9 @@ Run the test suite with:
 ```bash
 uv run python -m unittest -v
 ```
+
+## Support the project
+
+If this benchmark is useful to you, you can support its continued development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-Support_the_project-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/jayliew)
