@@ -1,0 +1,9 @@
+[project]
+name = "cyber-threat-hunt-llm-evals"
+version = "0.1.0"
+description = "Evaluate open-weight models for cybersecurity threat hunting on host and network logs."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "ollama>=0.6.2",
+]

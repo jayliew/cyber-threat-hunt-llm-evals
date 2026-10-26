@@ -1,0 +1,103 @@
+# Ordered rules: the first matching name_pattern wins.
+# These checks describe the model package; Ollama renders the actual template.
+# Omitted parsers/allowed_stops mean that setting has no additional constraint.
+# parsers = [] requires plain text (no PARSER directive).
+# required_stops must be present; allowed_stops optionally restricts extra stops.
+
+[[formats]]
+label = "Foundation-Sec-8B-Instruct"
+name_pattern = "foundation-sec"
+markers = ["<|system|>", "<|user|>", "<|assistant|>"]
+forbidden = ["<|start_header_id|>"]
+parsers = []
+required_stops = ["<|end_of_text|>"]
+allowed_stops = ["<|end_of_text|>"]
+hint = "Foundation-Sec-8B-Instruct expects <|system|>, <|user|>, and <|assistant|>. Create a local model from modelfiles/Modelfile.foundation-sec-8b-instruct before running."
+
+[[formats]]
+label = "CyberPal 2.0"
+# Fine-tune of gpt-oss-20b. Harmony role tags, not Llama headers.
+name_pattern = "cyberpal"
+markers = ["<|start|>system<|message|>", "<|start|>developer<|message|>", "<|channel|>", "<|end|>"]
+required_stops = ["<|return|>", "<|call|>"]
+allowed_stops = ["<|return|>", "<|call|>"]
+hint = "CyberPal 2.0 expects Harmony framing with <|start|>, <|message|>, and <|channel|>, and stops <|return|> and <|call|>."
+
+[[formats]]
+label = "gpt-oss"
+# Harmony role tags. The library package sets temperature only, with no stop lines.
+name_pattern = "gpt-oss"
+markers = ["<|start|>system<|message|>", "<|start|>developer<|message|>", "<|channel|>", "<|end|>"]
+hint = "gpt-oss expects Harmony framing with <|start|>, <|message|>, and <|channel|>."
+
+[[formats]]
+label = "Mistral Small"
+name_pattern = "mistral-small"
+markers = ["[SYSTEM_PROMPT]", "[/SYSTEM_PROMPT]", "[INST]", "[/INST]"]
+
+[[formats]]
+label = "Mistral Nemo"
+name_pattern = "mistral-nemo"
+markers = ["[INST]", "[/INST]", ".System"]
+
+[[formats]]
+label = "Gemma 4"
+name_pattern = "gemma4"
+renderers = ["gemma4", "gemma4-large"]
+hint = "Gemma 4 must use RENDERER gemma4 or gemma4-large."
+
+[[formats]]
+label = "Muse Glimmer"
+name_pattern = "muse-glimmer"
+renderers = ["glimmer"]
+parsers = ["glimmer"]
+hint = "Muse Glimmer must use RENDERER glimmer and PARSER glimmer. Install with ollama pull muse-glimmer:30b-mlx on Apple Silicon."
+
+[[formats]]
+label = "GLM-4.7"
+# GLM-4.6 and earlier use a different renderer and must not match this rule.
+name_pattern = 'glm-4\.7(?!\d)'
+renderers = ["glm-4.7"]
+parsers = ["glm-4.7"]
+hint = "GLM-4.7 must use RENDERER glm-4.7 and PARSER glm-4.7. That renderer writes [gMASK]<sop>, <|system|>, <|user|>, and <|assistant|>; {{ .Prompt }} is valid only with this renderer."
+
+[[formats]]
+label = "Granite 4"
+name_pattern = "granite4"
+markers = ["<|im_start|>", "<|im_end|>"]
+
+[[formats]]
+label = "DeepSeek-R1"
+name_pattern = "deepseek-r1"
+# Fullwidth vertical bar U+FF5C, not ASCII |.
+markers = ["<｜User｜>", "<｜Assistant｜>"]
+
+[[formats]]
+label = "Command R"
+name_pattern = "command-r"
+markers = ["<|START_OF_TURN_TOKEN|>", "<|SYSTEM_TOKEN|>", "<|USER_TOKEN|>", "<|CHATBOT_TOKEN|>"]
+# The library template emits this pair before the chatbot turn. One end token
+# already closed the user turn.
+forbidden = ["<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>"]
+hint = "Command R must not place <|END_OF_TURN_TOKEN|> immediately before the chatbot turn. Create command-r from modelfiles/Modelfile.command-r."
+
+[[formats]]
+label = "Qwen3"
+# Qwen3.5 has a different renderer and must not match this rule.
+name_pattern = 'qwen3(?!\.5)'
+markers = ["<|im_start|>", "<|im_end|>"]
+
+[[formats]]
+label = "Llama 3"
+name_pattern = "llama3"
+markers = ["<|start_header_id|>", "<|eot_id|>"]
+
+[[formats]]
+label = "Phi-3 Medium 128K"
+# Ollama library tag phi3:medium-128k, plus a phi-3-medium-128k wrapper.
+# Does not match phi3:medium, phi3.5, or phi4.
+name_pattern = "phi-?3[:.-]medium-128k"
+markers = ["<|system|>", "<|user|>", "<|assistant|>", "<|end|>"]
+required_stops = ["<|end|>", "<|user|>", "<|assistant|>"]
+allowed_stops = ["<|end|>", "<|user|>", "<|assistant|>"]
+hint = "Phi-3 Medium 128K expects <|system|>, <|user|>, <|assistant|>, and <|end|>, and stops <|end|>, <|user|>, and <|assistant|>."
