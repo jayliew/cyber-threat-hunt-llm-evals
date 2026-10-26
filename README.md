@@ -4,7 +4,7 @@
 
 [![Runs Locally](https://img.shields.io/badge/Runs-Locally-238636?style=flat-square)](#quick-start) [![Ollama](https://img.shields.io/badge/Inference-Ollama-333333?style=flat-square)](https://ollama.com) [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-2ea44f?style=flat-square&logo=github&logoColor=white)](#contribute-a-model-run) [![View Eval Results](https://img.shields.io/badge/View-Eval_Results-0969da?style=flat-square)](https://github.com/jayliew/cyber-threat-hunt-llm-evals/tree/main/results)
 
-**Can an open-weight LLM tell a real cyber threat from activity that only *looks* malicious?**
+**Can an open-weight LLM detect real threats, avoid benign lookalikes, and recognize when the evidence is inconclusive?**
 
 This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Give a model the same host and network logs, ask it to investigate, and compare whether it reaches a defensible verdict **with evidence**—not just a convincing-sounding explanation.
 
@@ -12,28 +12,31 @@ This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Gi
 - **Your models, your hardware:** run locally through [Ollama](https://ollama.com) or optionally [Colibri](https://github.com/JustVugg/colibri). The Ollama quick start needs no cloud API key or SIEM.
 - **Inspectable results:** structured findings, `event.id` citations, validation checks, and an HTML comparison report.
 
-**Results snapshot:** The [October 3 evaluation](#results-so-far) covers **15 model configurations × 7 synthetic scenarios = 105 investigations**. In the published LLM-assisted grading, **32/105 runs passed** and **none passed the ambiguous c07 case**. These are exploratory, configuration-specific results—not a definitive model ranking.
+**The finding that surprised me:** In the [October 3 evaluation](#results-so-far), **none of the 15 model configurations passed the deliberately ambiguous case (c07)** under the published LLM-assisted rubric. Across seven synthetic scenarios (105 investigations), 32/105 passed overall. The challenge wasn't merely choosing `inconclusive` instead of `suspicious`: it was identifying what the evidence could **not** establish, without inventing certainty. These are exploratory results, not a definitive model ranking.
 
 **We need your GPU time.** Most people can't run every 70B+ model, MoE, or less-quantized checkpoint. If you can test a model or configuration that isn't represented in the [published results](#results-so-far), your contribution helps everyone understand what's actually possible. [Jump to contributing](#contribute-a-model-run).
 
 > **Scope:** This repo evaluates model outputs on supplied synthetic logs. It is **not** an autonomous threat-hunting agent, a SIEM, or a production detection system.
 
-## One real failure: valid citations, wrong conclusion
+## The hardest case: knowing when the evidence isn't enough
 
-**A model can cite real events and still misread the evidence.** In the October 12 run, `gemma4:26b` examined [case 07](logs/opaque-sync-transfers.jsonl): two upload-heavy TLS connections occurred while endpoint process attribution was unavailable. A sync client was installed, but the logs could not establish which process initiated the traffic or why.
+The most revealing result so far isn't a missed attack. It's **the failure to handle uncertainty**. In the [October 3 results](#results-so-far), **all 15 evaluated model configurations failed the deliberately ambiguous c07 scenario under the published grading rubric**. Two configurations in an October 12 follow-up also failed that case.
 
-| | Verdict | What the evidence supports |
-| --- | --- | --- |
-| **Answer key** | `inconclusive` | Suspicious *and* benign explanations remain possible. |
-| **Gemma 4** | `suspicious` / "Data Exfiltration" | Suggested defense evasion and misread another flow as an outbound transfer. |
+### Why c07 is ambiguous
+
+In [case 07: opaque sync transfers](logs/opaque-sync-transfers.jsonl), a workstation makes two upload-heavy TLS connections to an external address (8 MiB and 10 MiB outbound). An installed file-sync client makes legitimate syncing plausible, but there is **no evidence tying that client to either connection**. Endpoint telemetry is missing during both transfers, and the logs don't show the payload, authorization, or purpose. The traffic warrants investigation; it doesn't establish either verified benign syncing or confirmed exfiltration.
+
+The answer key expects **`inconclusive`**. Importantly, the rubric does **not** reject an answer just because it says `suspicious`: a well-supported suspicious assessment that acknowledges the missing evidence can be reviewed as valid. What matters is **interpretation, supporting evidence, and restraint**, not simply matching a verdict label. [Read the c07 answer key](evals/answer-keys.md#c07--opaque-sync-transfers).
+
+**Why this matters:** An autonomous threat hunter that turns every ambiguous signal into a confident attack narrative could overwhelm analysts with false positives. It needs to distinguish *worth investigating* from *enough evidence to conclude*. This small, public synthetic benchmark raises that question; it doesn't prove a general failure across all LLMs.
+
+### An example of a failure: valid citations, unsupported conclusion
+
+In the October 12 run, `gemma4:26b` labeled c07 as suspicious data exfiltration and supplied real event IDs, but also inferred an unsupported evasion story. One cited background event, `c07-e021`, showed **5,400 bytes from the internal source and 1,200,000 bytes from the external destination**—a download-heavy flow, not another large upload. The response passed structural validation while failing separate interpretation, evidence, and restraint checks.
 
 ![Case 07 grading: Muse Glimmer and Gemma 4 both returned valid-format suspicious verdicts, but failed interpretation, evidence, and restraint checks.](docs/images/case-07-analytical-failures.png)
 
-*The [full case 07 grading report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html) includes each model’s response and cited event IDs.*
-
-The concrete mistake: Gemma cited `c07-e021` as part of the outbound-transfer pattern. That event shows **5,400 bytes sent and 1,200,000 bytes received**—a **download-heavy** connection, not another large upload. Its output passed structural validation and cited existing IDs, yet failed interpretation, evidence, and restraint in the separate grading review.
-
-A well-justified `suspicious` conclusion is not automatically wrong: the rubric permits one if the reasoning supports it. The problem here is the unsupported causal story and misinterpretation of an actual log entry. [See the grading report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html), [raw comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/report.html), and [answer key](evals/answer-keys.md).
+See the [October 3 grading of 105 investigations](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/03-Oct-2026-Sat_08-57pm-ET/threat-hunt-grading.html), the [October 12 grading and model responses](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html), and the [answer keys](evals/answer-keys.md).
 
 ## Quick start
 
@@ -153,7 +156,7 @@ The reports below demonstrate the benchmark and its failure modes. Their rubric-
 
 ### 12 October 2026
 
-**TLDR:** Both models identify the six clear cases, and neither fully handles the opaque transfers in c07. `muse-glimmer:30b-mlx` is slightly ahead of `gemma4:26b` (6/7 vs 5/7) because it keeps restraint on every case (7/7 vs 5/7).
+**TLDR:** Neither `muse-glimmer:30b-mlx` nor `gemma4:26b` passed the ambiguous c07 case under the grading rubric. Their overall graded case counts were 6/7 and 5/7, respectively; c07 remained the unresolved failure.
 
 2 configurations × 7 cases: `muse-glimmer:30b-mlx` and `gemma4:26b`.
 
@@ -162,7 +165,7 @@ The reports below demonstrate the benchmark and its failure modes. Their rubric-
 
 ### 3 October 2026
 
-**TLDR:** Top three are `gemma4:26b` (6/7), `gemma4:31b` (5/7), and `mistral-small3.2:latest` (4/7). Only 32 of 105 runs pass, and none pass c07.
+**TLDR:** **0/15 model configurations passed c07**, the case requiring restraint about insufficient evidence. Across all cases, 32/105 investigations passed. The top three configurations were `gemma4:26b` (6/7), `gemma4:31b` (5/7), and `mistral-small3.2:latest` (4/7).
 
 15 configurations × 7 cases.
 
