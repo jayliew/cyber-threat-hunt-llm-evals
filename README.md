@@ -463,3 +463,9 @@ Run the test suite with:
 ```bash
 uv run python -m unittest -v
 ```
+
+## Support the project
+
+If this benchmark is useful to you, you can support its continued development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-Support_the_project-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/jayliew)
