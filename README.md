@@ -90,6 +90,18 @@ Each scenario starts a fresh conversation and requests four fields:
 
 The runner validates output structure, citation IDs, completion status, and context use. **Valid citations do not prove valid reasoning.** Use the separate [answer keys and rubric](evals/answer-keys.md) to review *interpretation, evidence, and restraint*. See [limitations](#limitations-and-fair-comparisons) before comparing models.
 
+### Architecture at a glance
+
+```mermaid
+flowchart LR
+    A["Host + network logs<br/>ECS JSONL"] --> B["Fresh model request<br/>Ollama or Colibri"]
+    B --> C["Verdict + threat type<br/>summary + event ID citations"]
+    C --> D["Validate format<br/>and cited event IDs"]
+    D --> E["HTML report<br/>+ results.jsonl"]
+    E -.-> F["Separate rubric review<br/>answer keys never shown to model"]
+```
+
+The runner validates output structure and known event IDs; analytical correctness is reviewed separately using the [answer keys](evals/answer-keys.md).
 ## Limitations and fair comparisons
 
 **This is a small, inspectable research baseline—not a production detection benchmark or a definitive model leaderboard.** Contributions that address its limitations are especially welcome.
