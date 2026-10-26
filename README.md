@@ -12,6 +12,19 @@ This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Gi
 
 > **Scope:** This repo evaluates model outputs on supplied synthetic logs. It is **not** an autonomous threat-hunting agent, a SIEM, or a production detection system.
 
+## One real failure: valid citations, wrong conclusion
+
+**A model can cite real events and still misread the evidence.** In the October 12 run, `gemma4:26b` examined [case 07](logs/opaque-sync-transfers.jsonl): two upload-heavy TLS connections occurred while endpoint process attribution was unavailable. A sync client was installed, but the logs could not establish which process initiated the traffic or why.
+
+| | Verdict | What the evidence supports |
+| --- | --- | --- |
+| **Answer key** | `inconclusive` | Suspicious *and* benign explanations remain possible. |
+| **Gemma 4** | `suspicious` / "Data Exfiltration" | Suggested defense evasion and misread another flow as an outbound transfer. |
+
+The concrete mistake: Gemma cited `c07-e021` as part of the outbound-transfer pattern. That event shows **5,400 bytes sent and 1,200,000 bytes received**—a **download-heavy** connection, not another large upload. Its output passed structural validation and cited existing IDs, yet failed interpretation, evidence, and restraint in the separate grading review.
+
+A well-justified `suspicious` conclusion is not automatically wrong: the rubric permits one if the reasoning supports it. The problem here is the unsupported causal story and misinterpretation of an actual log entry. [See the grading report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html), [raw comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/report.html), and [answer key](evals/answer-keys.md).
+
 ## Quick start
 
 **Prerequisites:** Python 3.14+, [uv](https://docs.astral.sh/uv/), and a running [Ollama](https://ollama.com) server. Choose a model your hardware can run. `mistral-nemo:12b` is a supported, relatively small starting point; the harness will not download models for you.
@@ -69,7 +82,19 @@ Each scenario starts a fresh conversation and requests four fields:
 - **Summary**
 - **Evidence:** citations to `event.id`
 
-The runner validates output structure, citation IDs, completion status, and context use. **It does not automatically grade whether a verdict is correct.** Use the separate [answer keys and rubric](evals/answer-keys.md) to review *interpretation, evidence, and restraint*. The seven scenarios are synthetic ECS-style excerpts, not real incident captures; each model/scenario pair currently runs once. Treat comparisons as exploratory evidence, **not statistically robust model rankings**.
+The runner validates output structure, citation IDs, completion status, and context use. **Valid citations do not prove valid reasoning.** Use the separate [answer keys and rubric](evals/answer-keys.md) to review *interpretation, evidence, and restraint*. See [limitations](#limitations-and-fair-comparisons) before comparing models.
+
+## Limitations and fair comparisons
+
+**This is a small, inspectable research baseline—not a production detection benchmark or a definitive model leaderboard.** Contributions that address its limitations are especially welcome.
+
+- **Seven public, synthetic scenarios:** these are hand-selected ECS-style host/network excerpts, not representative enterprise telemetry or unseen incidents. Public answer keys also make this unsuitable as a contamination-resistant test set.
+- **One sample per model/case:** the current results do not estimate run-to-run variance, confidence intervals, or error rates. Changing seeds, quantization, context, or inference settings may change outcomes.
+- **Correctness is not scored by the harness:** it checks structure and known citation IDs, not whether a cited record actually proves the claim. Published rubric-based grades were produced with an LLM and need independent human review.
+- **Model configurations aren't fully standardized:** checkpoints differ in quantization, thinking mode, context settings, and sometimes model-specific prompt framing. Comparisons describe *these configurations*, not intrinsic model capability in isolation.
+- **No agentic investigation yet:** the model receives selected evidence in one conversation; it cannot query a SIEM, follow leads, request missing logs, or validate hypotheses with tools.
+
+For comparable submissions, keep the original seven inputs and task contract unchanged, publish exact model and inference settings, and share the raw outputs—even failures. New scenarios and improved grading methods should be proposed separately so historical comparisons remain interpretable.
 
 ## Contribute a model run
 
