@@ -21,6 +21,10 @@ This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Gi
 | **Answer key** | `inconclusive` | Suspicious *and* benign explanations remain possible. |
 | **Gemma 4** | `suspicious` / "Data Exfiltration" | Suggested defense evasion and misread another flow as an outbound transfer. |
 
+![Case 07 grading: Muse Glimmer and Gemma 4 both returned valid-format suspicious verdicts, but failed interpretation, evidence, and restraint checks.](docs/images/case-07-analytical-failures.png)
+
+*The [full case 07 grading report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html) includes each model’s response and cited event IDs.*
+
 The concrete mistake: Gemma cited `c07-e021` as part of the outbound-transfer pattern. That event shows **5,400 bytes sent and 1,200,000 bytes received**—a **download-heavy** connection, not another large upload. Its output passed structural validation and cited existing IDs, yet failed interpretation, evidence, and restraint in the separate grading review.
 
 A well-justified `suspicious` conclusion is not automatically wrong: the rubric permits one if the reasoning supports it. The problem here is the unsupported causal story and misinterpretation of an actual log entry. [See the grading report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html), [raw comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/12-Oct-2026-Mon_10-07pm-ET/report.html), and [answer key](evals/answer-keys.md).
