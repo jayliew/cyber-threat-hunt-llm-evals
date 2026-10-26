@@ -1,3 +1,5 @@
+![Cyber Threat Hunt LLM Evals — minimal retro pixel terminal banner](.github/social-preview.png)
+
 # Cyber Threat Hunt LLM Evals
 
 [![Runs Locally](https://img.shields.io/badge/Runs-Locally-238636?style=flat-square)](#quick-start) [![Ollama](https://img.shields.io/badge/Inference-Ollama-333333?style=flat-square)](https://ollama.com) [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-2ea44f?style=flat-square&logo=github&logoColor=white)](#contribute-a-model-run) [![View Eval Results](https://img.shields.io/badge/View-Eval_Results-0969da?style=flat-square)](https://github.com/jayliew/cyber-threat-hunt-llm-evals/tree/dev/results)
@@ -477,6 +479,10 @@ Run the test suite with:
 ```bash
 uv run python -m unittest -v
 ```
+
+## Contact
+
+Questions, feedback, or ideas for model evaluations? Reach the repository's author and maintainer, **Jay Liew**, at `jay liew at jay liew dot com` (remove the spaces and replace “at” and “dot” with their symbols).
 
 ## Support the project
 
