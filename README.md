@@ -1,34 +1,175 @@
 # Cyber Threat Hunt LLM Evals
 
-Open-weight models are advancing quickly, but security teams still lack a practical way to compare how well they investigate real threat-hunting patterns in host and network logs. To our knowledge, no public benchmark currently focuses on open-weight model performance across both.
+**Can an open-weight LLM tell a real cyber threat from activity that only *looks* malicious?**
 
-Cyber Threat Hunt LLM Evals is a local, reproducible benchmark for that comparison. It runs Ollama models, and optionally models served by [Colibri](https://github.com/JustVugg/colibri), against synthetic ECS event sets, requires a structured evidence-backed finding, validates the response, and produces side-by-side reports for human review. One comparison can mix the two. The current scenarios test suspicious activity, convincing benign lookalikes, and cases where the evidence should remain inconclusive.
+This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Give a model the same host and network logs, ask it to investigate, and compare whether it reaches a defensible verdict **with evidence**—not just a convincing-sounding explanation.
 
-Security practitioners, model researchers, and engineers can contribute model runs, new scenarios, answer keys, inference configurations, or improvements to the benchmark. Open an issue to discuss an experiment or submit a pull request with results and changes.
+- **7 focused scenarios:** actual attack patterns, benign lookalikes, and a case where the right answer is *we don't know*.
+- **Your models, your hardware:** run locally through [Ollama](https://ollama.com) or optionally [Colibri](https://github.com/JustVugg/colibri). The Ollama quick start needs no cloud API key or SIEM.
+- **Inspectable results:** structured findings, `event.id` citations, validation checks, and an HTML comparison report.
 
-## What it evaluates
+**We need your GPU time.** Most people can't run every 70B+ model, MoE, or less-quantized checkpoint. If you can test a model or configuration that isn't represented in the [published results](#results-so-far), your contribution helps everyone understand what's actually possible. [Jump to contributing](#contribute-a-model-run).
 
-Each hunt starts a fresh conversation and asks the model for:
-
-- `Verdict`: `suspicious`, `benign`, or `inconclusive`
-- `Threat type`
-- `Summary`
-- `Evidence`, cited by `event.id`
-
-The harness checks the output contract, cited IDs, completion status, and context use. It does **not** score detection accuracy automatically: compare each answer with [the human grading keys](evals/answer-keys.md). This version runs each model/scenario pair once, so results are observations rather than statistically stable performance estimates.
-
-The seven synthetic scenarios include three suspicious patterns, three contextual benign lookalikes, and one deliberately ambiguous transfer. They are selected ECS excerpts, not full captures or authentic vendor exports. See [logs/README.md](logs/README.md) for field and collection semantics.
+> **Scope:** This repo evaluates model outputs on supplied synthetic logs. It is **not** an autonomous threat-hunting agent, a SIEM, or a production detection system.
 
 ## Quick start
 
-Requirements:
+**Prerequisites:** Python 3.14+, [uv](https://docs.astral.sh/uv/), and a running [Ollama](https://ollama.com) server. Choose a model your hardware can run. `mistral-nemo:12b` is a supported, relatively small starting point; the harness will not download models for you.
 
-- Python 3.14+
-- [uv](https://docs.astral.sh/uv/)
-- [Ollama](https://ollama.com), running locally, for Ollama models
-- At least one supported model already installed in `ollama list`, or a Colibri model already served by `coli serve`
+**1. Clone and install**
 
-On macOS, set the recommended Ollama server environment before starting or restarting Ollama:
+```bash
+git clone https://github.com/jayliew/cyber-threat-hunt-llm-evals.git
+cd cyber-threat-hunt-llm-evals
+uv sync
+```
+
+**2. Download a model**
+
+```bash
+ollama pull mistral-nemo:12b
+```
+
+**3. Run your first hunt**
+
+```bash
+uv run python compare_models.py --models mistral-nemo:12b --logs logs/http-beaconing.jsonl
+```
+
+That's it. Open `report.html` in the timestamped `results/` directory. You'll see the model's verdict, explanation, cited events, validity checks, and timing. To see what a report looks like before running anything, [view an example](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/dev/results/12-Oct-2026-Mon_10-07pm-ET/report.html).
+
+**Run all seven scenarios against your model:**
+
+```bash
+uv run python compare_models.py --models mistral-nemo:12b
+```
+
+**Have the GPU for a bigger model?** `llama3.3:70b` is already recognized by the runner:
+
+```bash
+ollama pull llama3.3:70b
+uv run python compare_models.py --models llama3.3:70b
+```
+
+If you hit a model-format preflight error or want to evaluate a new family, see [Adding a model](#adding-a-model). The runner deliberately checks compatibility rather than silently accepting a broken chat template.
+
+## What are we testing?
+
+A model acting as a security investigator needs to do more than spot suspicious keywords. It must:
+
+1. **Recognize attacks** hidden in ordinary host and network activity.
+2. **Avoid false alarms** when benign behavior resembles an attack.
+3. **Admit uncertainty** when the available logs don't support a confident call.
+4. **Show its work** by citing real event IDs, without inventing evidence.
+
+Each scenario starts a fresh conversation and requests four fields:
+
+- **Verdict:** `suspicious`, `benign`, or `inconclusive`
+- **Threat type**
+- **Summary**
+- **Evidence:** citations to `event.id`
+
+The runner validates output structure, citation IDs, completion status, and context use. **It does not automatically grade whether a verdict is correct.** Use the separate [answer keys and rubric](evals/answer-keys.md) to review *interpretation, evidence, and restraint*. The seven scenarios are synthetic ECS-style excerpts, not real incident captures; each model/scenario pair currently runs once. Treat comparisons as exploratory evidence, **not statistically robust model rankings**.
+
+## Contribute a model run
+
+**The question is bigger than any one person's hardware.** Larger checkpoints, different quantizations, and inference settings may change the answers. The most useful contribution is a *reproducible run on a model/configuration the project hasn't yet evaluated*—especially a large model that many developers can't run locally.
+
+**You can help in three ways:**
+
+1. **Run a model and share the artifacts.** Choose a [supported model](#models-and-setup), run all seven scenarios, and open a PR with the timestamped result directory (`results.jsonl`, `report.html`, `manifest.json`, and configuration snapshots). In your PR, include your CPU/GPU and memory, model name/tag, quantization, backend, and any important inference settings. If you have time, add notes against the [answer keys](evals/answer-keys.md). Raw, reproducible outputs are helpful even without manual grading.
+2. **Add an unregistered model.** Add its chat-template compatibility entry and an inference configuration, run the tests, then contribute its results. See [Adding a model](#adding-a-model). We particularly welcome **70B+ models, MoE checkpoints, and high-memory configurations**.
+3. **Make the benchmark harder and better.** Contribute new attack/benign/ambiguous cases, improve ground-truth rubrics, expand backend support, or strengthen validation. Keep answer keys out of the model input.
+
+Don't have a large GPU? Reproducing an existing run, investigating a failed model template, or contributing a convincing benign lookalike is equally valuable.
+
+**[Open an issue](https://github.com/jayliew/cyber-threat-hunt-llm-evals/issues)** to propose a model or scenario, or submit a PR with a run. Please keep the original seven cases and prompt unchanged when contributing comparable results; propose benchmark changes separately so comparisons remain meaningful.
+
+## The seven scenarios
+
+| Scenario | The test |
+| --- | --- |
+| [`http-beaconing.jsonl`](logs/http-beaconing.jsonl) | Periodic HTTP check-ins amid normal traffic (suspicious) |
+| [`password-spray.jsonl`](logs/password-spray.jsonl) | Failed authentication attempts across many accounts (suspicious) |
+| [`internal-network-scan.jsonl`](logs/internal-network-scan.jsonl) | Internal port probes amid normal activity (suspicious) |
+| [`shared-vpn-logins.jsonl`](logs/shared-vpn-logins.jsonl) | Shared VPN activity that resembles password spraying (benign) |
+| [`managed-telemetry.jsonl`](logs/managed-telemetry.jsonl) | Managed check-ins that resemble beaconing (benign) |
+| [`scheduled-discovery.jsonl`](logs/scheduled-discovery.jsonl) | Authorized network discovery that resembles scanning (benign) |
+| [`opaque-sync-transfers.jsonl`](logs/opaque-sync-transfers.jsonl) | Incomplete host + network evidence requiring restraint (inconclusive) |
+
+These are selected synthetic ECS event sets, not full raw captures or vendor exports. See [log semantics](logs/README.md) and the [grading keys](evals/answer-keys.md). The keys are never provided to the evaluated model.
+
+## Results so far
+
+The reports below demonstrate the benchmark and its failure modes. Their rubric-based grades were generated with an LLM and should be independently reviewed. Different model configurations and one run per case do **not** establish definitive rankings.
+
+### 12 October 2026
+
+**TLDR:** Both models identify the six clear cases, and neither fully handles the opaque transfers in c07. `muse-glimmer:30b-mlx` is slightly ahead of `gemma4:26b` (6/7 vs 5/7) because it keeps restraint on every case (7/7 vs 5/7).
+
+2 configurations × 7 cases: `muse-glimmer:30b-mlx` and `gemma4:26b`.
+
+- [Threat hunt grading](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/dev/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html): grading (by GPT 6.1 Sol on high thinking) of the 14 evaluations—per-case scores for interpretation, evidence, restraint, and output validity.
+- [Model comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/dev/results/12-Oct-2026-Mon_10-07pm-ET/report.html): harness-generated `report.html` for that run—summary table of verdicts, output status, timings, context/token use, plus full answers and prompts.
+
+### 3 October 2026
+
+**TLDR:** Top three are `gemma4:26b` (6/7), `gemma4:31b` (5/7), and `mistral-small3.2:latest` (4/7). Only 32 of 105 runs pass, and none pass c07.
+
+15 configurations × 7 cases.
+
+- [Threat hunt grading](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/03-Oct-2026-Sat_08-57pm-ET/threat-hunt-grading.html): grading (by GPT-6.1 Sol "high") of the 105 evaluations—rankings, rubric, failures, and per-run scores for interpretation, evidence, restraint, and output validity.
+- [Model comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/03-Oct-2026-Sat_08-57pm-ET/report.html): harness-generated `report.html` for that run—summary table of verdicts, output status, timings, context/token use, plus full answers and prompts.
+
+## More ways to run
+
+**Compare models on selected scenarios:**
+
+```bash
+uv run python compare_models.py \
+  --models qwen3:32b mistral-small3.2:24b \
+  --logs logs/password-spray.jsonl logs/http-beaconing.jsonl
+```
+
+**Use a checked-in inference configuration:**
+
+```bash
+uv run python compare_models.py \
+  --models qwen3:32b \
+  --logs logs/http-beaconing.jsonl \
+  --inference-configuration inference_config/qwen3-32b.conf
+```
+
+**Set a per-request timeout (default: unlimited):**
+
+```bash
+uv run python compare_models.py \
+  --models qwen3:32b \
+  --logs logs/http-beaconing.jsonl \
+  --timeout 600
+```
+
+**Run the default comparison matrix:**
+
+```bash
+uv run python compare_models.py
+```
+
+The default matrix evaluates Qwen3 32B, Mistral Small 3.2 24B, and Foundation-Sec 8B on all seven scenarios (21 runs), provided those models are installed and correctly configured. Override the matrix with `--models` and `--logs`, or change `MODELS` and `DEFAULT_SCENARIO_LOGS` in `compare_models.py`.
+
+**Mix Ollama and an already-served Colibri model:**
+
+```bash
+uv run python compare_models.py \
+  --models qwen3:32b colibri/glm-5.2-colibri \
+  --logs logs/http-beaconing.jsonl
+```
+
+Runs are sequential and grouped by model, with a fresh conversation per case. Models are checked before inference and are **never downloaded by the runner**. One failed inference doesn't stop the remaining cases.
+
+### macOS / Ollama server settings
+
+Before starting or restarting Ollama, the current recommended macOS environment is:
 
 ```bash
 launchctl setenv OLLAMA_FLASH_ATTENTION 1
@@ -37,69 +178,11 @@ launchctl setenv OLLAMA_NUM_PARALLEL 1
 launchctl setenv OLLAMA_MAX_LOADED_MODELS 1
 ```
 
-Install dependencies, install a model, and run one case:
+These settings are recommended for comparable local runs, not required to try the first scenario.
 
-```bash
-uv sync
-ollama run qwen3:32b
-uv run python compare_models.py \
-  --models qwen3:32b \
-  --logs logs/http-beaconing.jsonl
-```
+## Models and setup
 
-Each invocation creates a timestamped results directory. Open its `report.html` to review the verdict, threat type, summary, evidence, context use, timings, and raw answer.
-
-Useful variants:
-
-```bash
-# Use an explicit checked-in inference configuration
-uv run python compare_models.py \
-  --models qwen3:32b \
-  --logs logs/http-beaconing.jsonl \
-  --inference-configuration inference_config/qwen3-32b.conf
-
-# Set a per-request timeout; the default is unlimited
-uv run python compare_models.py \
-  --models qwen3:32b \
-  --logs logs/http-beaconing.jsonl \
-  --timeout 600
-
-# Run the default comparison matrix
-uv run python compare_models.py
-
-# Mix an installed Ollama model with one model already served by coli serve
-uv run python compare_models.py \
-  --models qwen3:32b colibri/glm-5.2-colibri \
-  --logs logs/http-beaconing.jsonl
-```
-
-The default matrix compares Qwen3 32B, Mistral Small 3.2 24B, and Foundation-Sec 8B across all seven scenarios (21 runs). Edit `MODELS` and `DEFAULT_SCENARIO_LOGS` in `compare_models.py`, or override them:
-
-```bash
-uv run python compare_models.py \
-  --models qwen3:32b mistral-small3.2:24b \
-  --logs logs/password-spray.jsonl logs/http-beaconing.jsonl
-```
-
-Models are checked before inference and never downloaded by the harness. Runs are sequential and grouped by model; every case uses a fresh conversation. One failed inference does not stop the remaining cases.
-
-## Scenarios
-
-| Log                                | What it tests                                             |
-| ---------------------------------- | --------------------------------------------------------- |
-| `logs/http-beaconing.jsonl`        | Periodic HTTP check-ins among ordinary traffic            |
-| `logs/password-spray.jsonl`        | A many-account authentication failure sequence            |
-| `logs/internal-network-scan.jsonl` | Internal port probes among ordinary traffic               |
-| `logs/shared-vpn-logins.jsonl`     | Shared-VPN logins that resemble spraying                  |
-| `logs/managed-telemetry.jsonl`     | Managed check-ins that resemble beaconing                 |
-| `logs/scheduled-discovery.jsonl`   | Authorized discovery that resembles an internal scan      |
-| `logs/opaque-sync-transfers.jsonl` | Host and network evidence that should remain inconclusive |
-
-Grade each case with [evals/answer-keys.md](evals/answer-keys.md), which defines three checks: interpretation, evidence, and restraint. Keep the answer keys out of the model prompt.
-
-## Models
-
-The suite currently recognizes these Ollama names:
+The runner currently recognizes these Ollama model names (support does **not** mean a model has been evaluated):
 
 - `command-r:latest`
 - `cyberpal2-20b:latest`
@@ -118,20 +201,11 @@ The suite currently recognizes these Ollama names:
 - `phi3:medium-128k`
 - `qwen3:32b`
 
-Most are installed directly with `ollama run NAME` or `ollama pull NAME`. For example:
+Most can be installed directly using `ollama pull NAME` (or started interactively with `ollama run NAME`). For example:
 
 ```bash
-ollama run deepseek-r1:32b
-ollama run gemma4:31b
-ollama run muse-glimmer:30b-mlx
-ollama run glm-4.7-flash:q4_K_M
-ollama run gpt-oss:20b
-ollama run granite4.2:30b
-ollama run llama3.3:70b
-ollama run mistral-nemo:12b
-ollama run mistral-small3.2:24b
-ollama run phi3:medium-128k
-ollama run qwen3:32b
+ollama pull qwen3:32b
+ollama pull llama3.3:70b  # Requires substantially more memory
 ```
 
 Three models require local wrappers so Ollama uses the expected chat format.
@@ -227,7 +301,7 @@ Request defaults in `shared/harness.py` are `num_ctx=32768`, `thinking=false`, `
 
 The checked-in configurations record model-specific context and thinking settings. The installed model's quantization comes from the Ollama model named by `model`. The expected server-side KV cache is `f16` (`OLLAMA_KV_CACHE_TYPE`). It is recorded on each Ollama hunt and is not sent as a chat option.
 
-## Colibri
+## Colibri backend
 
 Colibri is optional. The harness does not install it, download weights, or start `coli serve`. Start the server yourself, then name the published model id with a `colibri/` prefix:
 
@@ -249,7 +323,7 @@ Colibri applies the engine chat template. `shared/model_formats.toml` is not che
 
 Colibri accepts `seed` and ignores it. These runs record `seed_applied: false`. Context length and KV cache quantization are whatever that `coli serve` process was started with, not the Ollama `seed=0` and `f16` defaults.
 
-## Hunt and validation behavior
+## Evaluation and validation internals
 
 `compare_models.py` calls `run_hunt` in `shared/harness.py`:
 
@@ -275,27 +349,7 @@ Most models use the shared system prompt and user task. Registered exceptions in
 
 Each model uses one prompt across inference configurations.
 
-## Results
-
-### 12 October 2026
-
-**TLDR:** Both models identify the six clear cases, and neither fully handles the opaque transfers in c07. `muse-glimmer:30b-mlx` is slightly ahead of `gemma4:26b` (6/7 vs 5/7) because it keeps restraint on every case (7/7 vs 5/7).
-
-2 configurations × 7 cases: `muse-glimmer:30b-mlx` and `gemma4:26b`.
-
-- [Threat hunt grading](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/dev/results/12-Oct-2026-Mon_10-07pm-ET/threat-hunt-grading.html): grading (by GPT 6.1 Sol on high thinking) of the 14 evaluations—per-case scores for interpretation, evidence, restraint, and output validity.
-- [Model comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/dev/results/12-Oct-2026-Mon_10-07pm-ET/report.html): harness-generated `report.html` for that run—summary table of verdicts, output status, timings, context/token use, plus full answers and prompts.
-
-### 3 October 2026
-
-**TLDR:** Top three are `gemma4:26b` (6/7), `gemma4:31b` (5/7), and `mistral-small3.2:latest` (4/7). Only 32 of 105 runs pass, and none pass c07.
-
-15 configurations × 7 cases.
-
-- [Threat hunt grading](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/03-Oct-2026-Sat_08-57pm-ET/threat-hunt-grading.html): grading (by GPT-6.1 Sol "high") of the 105 evaluations—rankings, rubric, failures, and per-run scores for interpretation, evidence, restraint, and output validity.
-- [Model comparison report](https://html-preview.github.io/?url=https://github.com/jayliew/cyber-threat-hunt-llm-evals/blob/main/results/03-Oct-2026-Sat_08-57pm-ET/report.html): harness-generated `report.html` for that run—summary table of verdicts, output status, timings, context/token use, plus full answers and prompts.
-
-### Run directories
+## Run artifacts and reproducibility
 
 Every run directory contains:
 
