@@ -20,7 +20,7 @@ This is a **standalone, local benchmark for cyber threat-hunting reasoning**. Gi
 
 ## The hardest case: knowing when the evidence isn't enough
 
-The most revealing result so far isn't a missed attack. It's **the failure to handle uncertainty**. In the [October 3 results](#results-so-far), **all 15 evaluated model configurations failed the deliberately ambiguous c07 scenario under the published grading rubric**. Two configurations tested again on October 12 also failed that case.
+The most revealing result so far isn't a missed attack. It's **the failure to handle uncertainty**. In the [October 3 results](#results-so-far), **all 15 evaluated model configurations failed the deliberately ambiguous c07 scenario under the published grading rubric**. Two configurations in an October 12 follow-up also failed that case.
 
 ### Why c07 is ambiguous
 
