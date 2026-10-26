@@ -483,6 +483,7 @@ uv run python -m unittest -v
 ## Contact
 
 Questions, feedback, or ideas for model evaluations? Reach the repository's author and maintainer, **Jay Liew**, at `jay liew at jay liew dot com` (remove the spaces and replace “at” and “dot” with their symbols).
+
 ## Support the project
 
 If this benchmark is useful to you, you can support its continued development:
